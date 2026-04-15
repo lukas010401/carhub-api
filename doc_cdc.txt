@@ -1,0 +1,147 @@
+Cahier des Charges Fonctionnel \226 MVP Plateforme
+Automobile Madagascar
+Objectif du MVP
+Le MVP (Minimum Viable Product) vise a creer une plateforme simple permettant de publier et rechercher
+des voitures d'occasion a Madagascar. L'objectif est de lancer rapidement le service afin de valider
+l'interet du marche et d'obtenir un volume initial d'annonces.
+Types d'utilisateurs
+Role
+Description
+Visiteur
+Peut consulter les annonces et contacter les vendeurs sans creer de compte
+Vendeur
+Doit creer un compte pour publier et gerer ses annonces
+Admin
+Mod\350re les annonces et g\350re la plateforme
+Pages principales du site
+1
+Homepage avec moteur de recherche
+2
+Page liste des voitures avec filtres
+3
+Page detail d'une voiture
+4
+Page connexion / inscription vendeur
+5
+Dashboard vendeur
+6
+Formulaire publier annonce
+7
+Interface d'administration
+Homepage
+1
+Barre de recherche rapide (marque, mod\350le, prix, ville)
+2
+Liste des annonces recentes
+3
+Marques populaires
+4
+Categories populaires (SUV, pickup, citadine, 4x4)
+Page Liste des Voitures
+Filtres disponibles :
+1
+Marque
+2
+Mod\350le
+3
+Prix minimum / maximum
+4
+Annee minimum / maximum
+5
+Carburant
+6
+Transmission
+7
+Ville
+8
+Kilometrage maximum
+Page Detail Vehicule
+1
+Galerie photos
+2
+Prix
+3
+Marque et mod\350le
+4
+Annee
+5
+Kilometrage
+6
+Carburant
+7
+Transmission
+8
+Ville
+9
+Description
+10
+Informations vendeur
+Actions disponibles :
+1
+Contacter le vendeur par WhatsApp
+2
+Appeler le vendeur
+3
+Envoyer un message simple
+Publier une annonce
+Champs du formulaire :
+1
+Marque
+2
+Mod\350le
+3
+Annee
+4
+Prix
+5
+Kilometrage
+6
+Carburant
+7
+Transmission
+8
+Ville
+9
+Description
+10
+Telephone
+11
+Photos (maximum 10)
+Statuts d'une annonce :
+1
+Draft
+2
+Pending validation
+3
+Active
+4
+Rejected
+Dashboard vendeur
+1
+Voir la liste de ses annonces
+2
+Modifier une annonce
+3
+Supprimer une annonce
+4
+Voir le statut des annonces
+Administration
+1
+Approuver ou refuser les annonces
+2
+Supprimer des annonces
+3
+Gerer les utilisateurs vendeurs
+4
+Gerer les marques, mod\350les et villes
+Resume du MVP
+1
+Navigation libre pour les acheteurs sans creation de compte
+2
+Publication d'annonces uniquement pour les vendeurs connectes
+3
+Recherche avancee avec filtres
+4
+Contact direct vendeur via telephone ou WhatsApp
+5
+Moderation des annonces par un administrateur

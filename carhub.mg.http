@@ -1,0 +1,6 @@
+@carhub.mg_HostAddress = http://localhost:5022
+
+GET {{carhub.mg_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

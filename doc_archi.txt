@@ -1,0 +1,319 @@
+Architecture Technique - Plateforme Automobile Madagascar
+Page 1
+Architecture Technique
+Plateforme Automobile Madagascar - MVP
+Responsive
+Ce document formalise l'architecture technique retenue pour la V1 du projet. L'objectif est de lancer une
+version simple, propre, evolutive et surtout responsive : consultation publique libre, comptes vendeurs et
+admin, gestion d'annonces, moderation, recherche filtree, stockage d'images externe et rendu adapte
+desktop, tablette et telephone.
+Bloc
+Choix retenu
+Frontend
+Next.js + TypeScript + Tailwind CSS + approche responsive mobile-first
+Backend
+Base de donnees
+PostgreSQL
+ORM
+Entity Framework Core + migrations
+Authentification
+Stockage images
+S3 compatible (Cloudflare R2 / AWS S3)
+Deploiement
+Docker Compose + Nginx
+Architecture Technique - Plateforme Automobile Madagascar
+Page 2
+1. Principes d'architecture
+Pour le MVP, l'architecture recommandee est un monolithe modulaire cote backend, avec un frontend
+separe. Ce choix permet de garder une base de code lisible, rapide a mettre en production et
+suffisamment propre pour evoluer vers plus de fonctionnalites sans repartir de zero.
+- Frontend separe pour le SEO, la performance et l'experience utilisateur.
+- Interface web responsive pour desktop, tablette et telephone des la V1.
+- Approche mobile-first sur les composants critiques : header, recherche, listing cards, detail vehicule,
+dashboard vendeur.
+- Backend API separe pour centraliser la logique metier, la securite et les futures integrations.
+- Base relationnelle PostgreSQL pour les annonces, les referentiels et les utilisateurs vendeurs.
+- Stockage objet externe pour les images afin d'eviter de surcharger la base de donnees.
+- Migrations EF Core pour versionner et faire evoluer le schema proprement.
+Vue d'ensemble logique
+Navigateur utilisateur
+ 
+ 
+ 
+ 
+\257
+Next.js Frontend responsive
+ 
+ 
+ 
+ 
+\257
+2. Stack technique retenue
+Couche
+Technologie
+Role
+Frontend
+Next.js + TypeScript
+Rendu web responsive, pages publiques SEO, dashboard vendeur et admin
+UI
+Tailwind CSS
+Mise en page rapide, coherente et responsive avec breakpoints
+Backend
+API REST, securite, logique metier
+ORM
+Entity Framework Core
+Acces aux donnees, mapping et migrations
+Database
+PostgreSQL
+Stockage relationnel principal
+Auth
+Connexion vendeur/admin et gestion des roles
+Validation
+FluentValidation
+Validation cote serveur
+Logs
+Serilog
+Journalisation et audit technique
+Images
+Cloudflare R2 / AWS S3
+Stockage des photos d'annonces
+Infra
+Docker Compose + Nginx
+Deploiement et reverse proxy
+Architecture Technique - Plateforme Automobile Madagascar
+Page 3
+3. Architecture frontend responsive
+Le frontend Next.js doit etre pense comme une application web responsive des le depart. La V1 ne doit
+pas etre seulement belle sur ecran PC : elle doit rester fluide et lisible sur smartphone, car beaucoup
+d'utilisateurs consulteront les annonces sur telephone.
+Structure recommandee
+src/
+app/
+components/
+features/
+services/
+lib/
+types/
+Exigences UX responsive
+- Approche mobile-first pour les composants et pages publiques.
+- Breakpoints clairs : mobile, tablette, desktop.
+- Navigation adaptee : menu compact sur mobile, navigation complete sur desktop.
+- Barre de recherche empilee sur mobile et horizontale sur desktop.
+- Cartes vehicules sur 1 colonne mobile, 2 colonnes tablette, 3 a 4 colonnes desktop selon largeur.
+- Page detail vehicule avec galerie en haut sur mobile et layout 2 colonnes sur desktop.
+- Formulaires vendeurs simplifies sur mobile avec champs pleine largeur.
+- Dashboard vendeur et admin utilisables sur mobile, avec tables empilees ou cartes si necessaire.
+Dossier frontend
+Dossier
+Usage
+app
+Routes Next.js : homepage, cars, login, dashboard vendeur, admin
+components
+Composants UI reutilisables : cards, filters, header, footer, forms
+features
+Organisation par domaine : auth, listings, search, admin
+services
+Clients API et appels HTTP centralises
+lib
+Helpers : format prix, slug, query params, utils
+types
+Types TypeScript partages
+Architecture Technique - Plateforme Automobile Madagascar
+Page 4
+4. Routes principales
+Zone
+Routes cles
+Public
+/, /cars, /cars/[slug]
+Authentification vendeur
+/login, /register, /forgot-password
+Dashboard vendeur
+/dashboard, /dashboard/listings, /dashboard/listings/new, /dashboard/listings/[id]/edit
+Admin
+/admin, /admin/listings, /admin/users, /admin/metadata
+5. Pages et comportement responsive
+- Homepage : hero, recherche rapide, dernieres annonces, marques populaires, categories populaires.
+- Listing page : filtre en drawer ou bloc repliable sur mobile, sidebar fixe sur desktop.
+- Detail annonce : CTA WhatsApp et Appeler toujours visibles sur mobile.
+- Login/Register vendeur : formulaire centre, simple, lisible sur petit ecran.
+- Creer annonce : progression claire, upload photo adapte tactile.
+- Dashboard vendeur : cartes de statut compactes et liste d'annonces consultable sur mobile.
+- Admin : priorite desktop, mais consultation mobile possible pour validation rapide.
+6. Architecture backend
+Le backend doit etre organise par responsabilites claires. L'objectif est d'eviter un projet fourre-tout et de
+garder une separation nette entre API, logique metier, domaine et infrastructure technique.
+Structure de solution recommandee
+src/
+AutoMada.Api
+AutoMada.Application
+AutoMada.Domain
+AutoMada.Infrastructure
+Projet
+Responsabilite
+AutoMada.Api
+Controllers, configuration auth, middleware, injection de dependances, endpoints
+AutoMada.Application
+Services metier, DTOs, cas d'usage, validations, interfaces
+AutoMada.Domain
+Entites metier, enums, regles metier pures
+AutoMada.Infrastructure
+EF Core, DbContext, Identity, stockage S3, migrations
+Modules metier du backend
+- Auth : register, login, refresh token, forgot/reset password.
+- Users : profil vendeur, roles, activation ou suspension.
+- Listings : creation, edition, suppression, detail et publication d'annonces.
+- Vehicle Metadata : marques, modeles, villes, categories, carburants, transmissions.
+- Media : upload, suppression, ordre d'affichage des images.
+Architecture Technique - Plateforme Automobile Madagascar
+Page 5
+- Admin : validation annonces, gestion vendeurs, gestion referentiels.
+- Public Search : recherche filtree, pagination, tris.
+Architecture Technique - Plateforme Automobile Madagascar
+Page 6
+7. Modele de donnees principal
+Le noyau fonctionnel du MVP repose sur quelques entites centrales.
+Entite
+Colonnes principales
+Users
+Id, Email, PasswordHash, FullName, PhoneNumber, WhatsAppNumber, Role, IsActive, CreatedAt, UpdatedAt
+Listings
+Id, SellerId, BrandId, ModelId, Year, Price, Mileage, FuelType, TransmissionType, CityId, CategoryId, Title, Description, PhoneNumber, WhatsAppNumber, Status, PublishedAt, CreatedAt, UpdatedAt
+ListingImages
+Id, ListingId, Url, StorageKey, DisplayOrder, CreatedAt
+Brands
+Id, Name, Slug, IsActive
+Models
+Id, BrandId, Name, Slug, IsActive
+Cities
+Id, Name, Slug, Province, IsActive
+Categories
+Id, Name, Slug, IsActive
+RefreshTokens
+Id, UserId, Token, ExpiresAt, RevokedAt, CreatedAt
+Enums metier utiles
+- UserRole : Admin, Seller
+- ListingStatus : Draft, PendingReview, Approved, Rejected, Archived, Sold
+- FuelType : Gasoline, Diesel, Hybrid, Electric
+- TransmissionType : Manual, Automatic
+8. API endpoints MVP
+Zone
+Endpoints principaux
+Auth
+Public Listings
+Seller Listings
+Media
+Admin
+Architecture Technique - Plateforme Automobile Madagascar
+Page 7
+9. Authentification, securite et workflow
+- Consultation publique libre pour les visiteurs.
+- Connexion obligatoire uniquement pour les vendeurs et les administrateurs.
+- JWT + refresh tokens pour les sessions cote frontend.
+- Ownership check sur les annonces : un vendeur ne modifie que ses propres annonces.
+- Validation serveur systematique de tous les champs.
+- Rate limiting sur les endpoints sensibles : login, upload, publication.
+- Logs des actions admin et evenements critiques.
+Workflow de publication d'annonce
+- Le vendeur se connecte.
+- Il cree une annonce au statut Draft.
+- Il renseigne les champs et ajoute les images.
+- Il soumet l'annonce : statut PendingReview.
+- L'admin approuve ou rejette.
+- Si l'annonce est approuvee, PublishedAt est renseigne et l'annonce devient visible publiquement.
+10. Stockage des images
+Les photos des vehicules ne doivent pas etre stockees dans PostgreSQL. La base ne conserve que les
+metadonnees des images.
+- Formats autorises : jpg, jpeg, png, webp
+- Limite du nombre d'images par annonce
+- Taille maximale par image
+- Ordre d'affichage gere en base
+- Compression ou redimensionnement plus tard si besoin
+11. Recherche, performance et responsive
+- Pour le MVP, PostgreSQL suffit pour les filtres principaux.
+- Filtres : marque, modele, prix min/max, annee min/max, carburant, transmission, ville, categorie, tri.
+- Tri : plus recent, prix croissant, prix decroissant, kilometrage croissant.
+- Pagination obligatoire.
+- Les pages de resultats doivent rester rapides sur reseau mobile.
+- Images optimisees et lazy loading cote frontend pour de bonnes performances sur telephone.
+- Meilisearch pourra etre ajoute plus tard si le volume augmente fortement.
+12. Deploiement et configuration
+Bloc
+Recommandation
+Backend
+appsettings.Development.json et appsettings.Production.json
+Architecture Technique - Plateforme Automobile Madagascar
+Page 8
+Frontend
+Variables d'environnement : NEXT_PUBLIC_API_BASE_URL
+Infra
+Docker Compose avec services frontend, api, postgres, nginx
+Proxy
+Nginx pour router le trafic et gerer le SSL
+Images
+Cloudflare R2 / AWS S3
+Architecture Technique - Plateforme Automobile Madagascar
+Page 9
+13. Migrations et gestion du schema PostgreSQL
+Le projet utilisera Entity Framework Core en Code First avec migrations. C'est le bon pattern pour suivre
+l'evolution du schema et garder une base reproductible entre dev, staging et production.
+Principe retenu
+- DbContext, configurations EF et migrations dans AutoMada.Infrastructure.
+- Entites et mappings definis dans le code, puis generation de migrations versionnees.
+- Application du schema via migrations, pas a la main.
+- Petites migrations lisibles plutot qu'enormes migrations difficiles a relire.
+Structure recommandee
+AutoMada.Infrastructure/
+Persistence/
+AppDbContext.cs
+Configurations/
+ListingConfiguration.cs
+BrandConfiguration.cs
+ModelConfiguration.cs
+Migrations/
+Workflow migrations
+- Creer ou modifier les entites et configurations Fluent API.
+- Generer une migration via le CLI EF Core.
+- Appliquer la migration en local sur PostgreSQL.
+- Commit la migration dans Git avec le code.
+- En production, privilegier un script SQL ou une application controlee de la migration.
+Commandes utiles
+dotnet ef migrations add InitialCreate
+dotnet ef migrations add AddListingCategory
+dotnet ef database update
+Bonnes pratiques
+- Ne pas reecrire une ancienne migration deja partagee.
+- Nommer clairement les migrations : InitialCreate, AddListingImages, AddPublishedAtToListings.
+- Creer aussi les index utiles via les migrations.
+- Eviter EnsureCreated pour un projet reel qui evolue.
+Index importants a prevoir
+- Listings(Status)
+- Listings(BrandId)
+- Listings(ModelId)
+- Listings(CityId)
+- Listings(Price)
+Architecture Technique - Plateforme Automobile Madagascar
+Page 10
+- Listings(Year)
+- Listings(PublishedAt)
+14. Resume operationnel
+Sujet
+Decision
+Architecture
+Frontend separe + backend API separe + base PostgreSQL
+Pattern backend
+Monolithe modulaire
+Frontend
+Web responsive desktop, tablette et mobile
+Auth
+Vendeurs et admin uniquement
+Recherche
+Filtres PostgreSQL pour le MVP
+Images
+Stockage S3 compatible
+Schema DB
+EF Core Code First + migrations
+Deploiement
+Docker Compose + Nginx
+Cette architecture est suffisamment simple pour lancer rapidement, mais deja assez serieuse pour
+supporter une montee en puissance progressive du produit sur tous les types d'ecrans.
+

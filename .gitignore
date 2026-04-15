@@ -1,0 +1,14 @@
+﻿bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.cache
+*.log
+TestResults/
+.nuget/
+.dotnet/
+.dotnet-tools/
+wwwroot/uploads/
+appsettings.Development.json

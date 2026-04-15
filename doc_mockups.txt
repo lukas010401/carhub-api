@@ -1,0 +1,40 @@
+UX Mockups \226 Plateforme Automobile Madagascar
+(MVP)
+Ce document presente les premi\350res maquettes UX pour la plateforme automobile. Les ecrans sont
+con\347us pour une utilisation sur ordinateur (desktop) et couvrent les principales pages du MVP : navigation
+publique, publication d'annonce, gestion vendeur et administration.
+Vue d'ensemble des ecrans
+Description des ecrans
+1
+Homepage
+ \226 page d'accueil avec barre de recherche rapide, derni\350res annonces et categories
+populaires.
+2
+Page liste des voitures
+ \226 affichage des resultats avec filtres avances (prix, marque, annee,
+carburant, localisation).
+3
+Page detail vehicule
+ \226 photos, informations compl\350tes sur le vehicule et boutons de contact vendeur
+(WhatsApp / appel).
+4
+Formulaire publier annonce
+ \226 interface permettant au vendeur de saisir les informations du vehicule
+et ajouter des photos.
+5
+Dashboard vendeur
+ \226 espace personnel pour gerer ses annonces (modifier, supprimer, voir statut).
+6
+Liste des annonces vendeur
+ \226 vue simplifiee de toutes les annonces publiees par le vendeur.
+7
+Admin dashboard
+ \226 interface d'administration pour valider ou refuser les annonces.
+8
+Gestion des annonces admin
+ \226 page dediee a la moderation des annonces publiees sur la
+plateforme.
+9
+Login / Register vendeur
+ \226 ecran d'authentification permettant aux vendeurs d'acceder a leur
+espace.
