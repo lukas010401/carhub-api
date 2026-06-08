@@ -20,6 +20,7 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.Configure<BetaModeOptions>(builder.Configuration.GetSection(BetaModeOptions.SectionName));
 builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection(MediaOptions.SectionName));
 builder.Services.Configure<EmailNotificationOptions>(builder.Configuration.GetSection(EmailNotificationOptions.SectionName));
 builder.Services.Configure<ManualPaymentOptions>(builder.Configuration.GetSection(ManualPaymentOptions.SectionName));
