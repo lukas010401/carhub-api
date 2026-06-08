@@ -1,4 +1,4 @@
-﻿using CarHub.Api.Domain.Enums;
+using CarHub.Api.Domain.Enums;
 using CarHub.Api.Infrastructure.Config;
 using CarHub.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -6,29 +6,28 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
-
 namespace CarHub.Api.Controllers;
-
 [ApiController]
 [Authorize(Policy = "SellerOrAdminPolicy")]
 [Route("api/seller/subscription")]
-public sealed class SellerSubscriptionController(AppDbContext dbContext, IOptions<ManualPaymentOptions> paymentOptions) : ControllerBase
+public sealed class SellerSubscriptionController(
+    AppDbContext dbContext,
+    IOptions<ManualPaymentOptions> paymentOptions,
+    IOptions<BetaModeOptions> betaOptions) : ControllerBase
 {
+    private readonly BetaModeOptions _betaOptions = betaOptions.Value;
     [HttpGet]
     public async Task<IActionResult> GetMine()
     {
         var userId = GetUserId();
-
         var user = await dbContext.Users
             .AsNoTracking()
             .Include(x => x.CompanyProfile)
             .SingleOrDefaultAsync(x => x.Id == userId && x.IsActive);
-
         if (user is null)
         {
             return NotFound();
         }
-
         var latest = await dbContext.ProfessionalSubscriptions
             .AsNoTracking()
             .Where(x => x.UserId == userId)
@@ -45,7 +44,6 @@ public sealed class SellerSubscriptionController(AppDbContext dbContext, IOption
                 x.Notes
             })
             .FirstOrDefaultAsync();
-
         var now = DateTime.UtcNow;
         var hasActiveSubscription = await dbContext.ProfessionalSubscriptions
             .AsNoTracking()
@@ -53,12 +51,20 @@ public sealed class SellerSubscriptionController(AppDbContext dbContext, IOption
                 && x.Status == SubscriptionStatus.Active
                 && x.StartsAtUtc <= now
                 && x.EndsAtUtc >= now);
-
         var isProfessional = user.AccountType == AccountType.Professional;
         var professionalMonthlyFee = paymentOptions.Value.ProfessionalMonthlyFee < 0
             ? 0
             : paymentOptions.Value.ProfessionalMonthlyFee;
-
+        var canPublish = _betaOptions.Enabled || !isProfessional || hasActiveSubscription;
+        var message = _betaOptions.Enabled
+            ? isProfessional
+                ? "Mode beta actif: les publications professionnelles sont autorisees sans abonnement actif."
+                : "Mode beta actif: les publications particuliers sont gratuites."
+            : !isProfessional
+                ? "Compte particulier: 20 000 Ar par annonce mise en ligne."
+                : hasActiveSubscription
+                    ? "Abonnement professionnel actif."
+                    : "Aucun abonnement professionnel actif.";
         return Ok(new
         {
             accountType = user.AccountType.ToString(),
@@ -67,16 +73,12 @@ public sealed class SellerSubscriptionController(AppDbContext dbContext, IOption
             companyVerified = user.CompanyProfile?.IsVerified ?? false,
             latestSubscription = latest,
             hasActiveSubscription,
-            canPublish = !isProfessional || hasActiveSubscription,
+            canPublish,
             professionalMonthlyFee,
-            message = !isProfessional
-                ? "Compte particulier: 20 000 Ar par annonce mise en ligne."
-                : hasActiveSubscription
-                    ? "Abonnement professionnel actif."
-                    : "Aucun abonnement professionnel actif."
+            betaModeEnabled = _betaOptions.Enabled,
+            message
         });
     }
-
     private Guid GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using CarHub.Api.Application.Contracts.Common;
 using CarHub.Api.Application.Contracts.Payments;
 using CarHub.Api.Domain.Entities;
@@ -9,36 +9,37 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-
 namespace CarHub.Api.Controllers;
-
 [ApiController]
 [Authorize(Policy = "SellerOrAdminPolicy")]
 [Route("api/seller/payments")]
-public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<ManualPaymentOptions> options) : ControllerBase
+public sealed class SellerPaymentsController(
+    AppDbContext dbContext,
+    IOptions<ManualPaymentOptions> options,
+    IOptions<BetaModeOptions> betaOptions) : ControllerBase
 {
     private readonly ManualPaymentOptions _options = options.Value;
-
+    private readonly BetaModeOptions _betaOptions = betaOptions.Value;
     [HttpPost("initiate-listing")]
     public async Task<IActionResult> InitiateListingPayment([FromBody] InitiateListingPaymentRequest request)
     {
+        if (_betaOptions.Enabled)
+        {
+            return BadRequest(ApiResponse<object>.Fail("Listing payments are disabled while beta mode is enabled."));
+        }
         var userId = GetUserId();
         var user = await dbContext.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId);
         if (user is null) return NotFound(ApiResponse<object>.Fail("Seller not found."));
-
         var listing = await dbContext.Listings.SingleOrDefaultAsync(x => x.Id == request.ListingId && x.SellerId == userId);
         if (listing is null) return NotFound(ApiResponse<object>.Fail("Listing not found."));
-
         if (user.AccountType == AccountType.Professional)
         {
             return BadRequest(ApiResponse<object>.Fail("Professional accounts must use subscription renewal payment flow."));
         }
-
         if (listing.Status == ListingStatus.Published || listing.Status == ListingStatus.PendingReview)
         {
             return BadRequest(ApiResponse<object>.Fail("Listing is already published or in publication workflow."));
         }
-
         var activePending = await dbContext.ManualPaymentRequests
             .AsNoTracking()
             .Where(x => x.UserId == userId
@@ -48,12 +49,10 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
                 && x.ExpiresAtUtc > DateTime.UtcNow)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
-
         if (activePending is not null)
         {
             return Ok(ApiResponse<object>.Ok(ToSellerPaymentDto(activePending), "Existing pending payment found."));
         }
-
         var payment = new ManualPaymentRequest
         {
             UserId = userId,
@@ -64,29 +63,27 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
             InternalReference = GenerateInternalReference("LST"),
             ExpiresAtUtc = DateTime.UtcNow.AddMinutes(Math.Max(5, _options.RequestExpiryMinutes))
         };
-
         dbContext.ManualPaymentRequests.Add(payment);
         await dbContext.SaveChangesAsync();
-
         return Ok(ApiResponse<object>.Ok(ToSellerPaymentDto(payment), "Payment request created."));
     }
-
     [HttpPost("initiate-subscription")]
     public async Task<IActionResult> InitiateSubscriptionPayment([FromBody] InitiateSubscriptionPaymentRequest request)
     {
+        if (_betaOptions.Enabled)
+        {
+            return BadRequest(ApiResponse<object>.Fail("Subscription payments are disabled while beta mode is enabled."));
+        }
         var userId = GetUserId();
         var user = await dbContext.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId);
         if (user is null) return NotFound(ApiResponse<object>.Fail("Seller not found."));
-
         if (user.AccountType != AccountType.Professional)
         {
             return BadRequest(ApiResponse<object>.Fail("Only professional sellers can initiate subscription renewal payment."));
         }
-
         var months = Math.Clamp(request.Months <= 0 ? 1 : request.Months, 1, 24);
         var monthlyPrice = _options.ProfessionalMonthlyFee < 0 ? 0 : _options.ProfessionalMonthlyFee;
         var expectedAmount = monthlyPrice * months;
-
         var activePending = await dbContext.ManualPaymentRequests
             .AsNoTracking()
             .Where(x => x.UserId == userId
@@ -95,12 +92,10 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
                 && x.ExpiresAtUtc > DateTime.UtcNow)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
-
         if (activePending is not null)
         {
             return Ok(ApiResponse<object>.Ok(ToSellerPaymentDto(activePending), "Existing pending payment found."));
         }
-
         var payment = new ManualPaymentRequest
         {
             UserId = userId,
@@ -112,13 +107,10 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
             InternalReference = GenerateInternalReference("SUB"),
             ExpiresAtUtc = DateTime.UtcNow.AddMinutes(Math.Max(5, _options.RequestExpiryMinutes))
         };
-
         dbContext.ManualPaymentRequests.Add(payment);
         await dbContext.SaveChangesAsync();
-
         return Ok(ApiResponse<object>.Ok(ToSellerPaymentDto(payment), "Payment request created."));
     }
-
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetMyPayment(Guid id)
     {
@@ -126,39 +118,36 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
         var payment = await dbContext.ManualPaymentRequests
             .AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == id && x.UserId == userId);
-
         if (payment is null) return NotFound(ApiResponse<object>.Fail("Payment request not found."));
         return Ok(ApiResponse<object>.Ok(ToSellerPaymentDto(payment), "Payment request loaded."));
     }
-
     [HttpPost("{id:guid}/submit-proof")]
     public async Task<IActionResult> SubmitProof(Guid id, [FromForm] SubmitManualPaymentProofRequest request, CancellationToken cancellationToken)
     {
+        if (_betaOptions.Enabled)
+        {
+            return BadRequest(ApiResponse<object>.Fail("Payment proof submission is disabled while beta mode is enabled."));
+        }
         var userId = GetUserId();
         var payment = await dbContext.ManualPaymentRequests
             .SingleOrDefaultAsync(x => x.Id == id && x.UserId == userId, cancellationToken);
-
         if (payment is null) return NotFound(ApiResponse<object>.Fail("Payment request not found."));
-
         if (payment.Status is ManualPaymentStatus.Approved or ManualPaymentStatus.Cancelled or ManualPaymentStatus.Expired)
         {
             return BadRequest(ApiResponse<object>.Fail("Payment request status does not allow proof submission."));
         }
-
         if (payment.ExpiresAtUtc < DateTime.UtcNow)
         {
             payment.Status = ManualPaymentStatus.Expired;
             await dbContext.SaveChangesAsync(cancellationToken);
             return BadRequest(ApiResponse<object>.Fail("Payment request expired."));
         }
-
         var txRef = request.ProviderTransactionReference?.Trim() ?? string.Empty;
         var senderNumber = request.SenderNumber?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(txRef) || string.IsNullOrWhiteSpace(senderNumber))
         {
             return BadRequest(ApiResponse<object>.Fail("ProviderTransactionReference and SenderNumber are required."));
         }
-
         var duplicateTx = await dbContext.ManualPaymentRequests
             .AsNoTracking()
             .AnyAsync(x => x.Id != payment.Id && x.ProviderTransactionReference == txRef, cancellationToken);
@@ -166,7 +155,6 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
         {
             return BadRequest(ApiResponse<object>.Fail("Transaction reference already used."));
         }
-
         payment.Provider = request.Provider;
         payment.ReceiverNumber = GetReceiverForProvider(request.Provider);
         payment.ProviderTransactionReference = txRef;
@@ -184,12 +172,9 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
         payment.ProofFileHash = null;
         payment.SubmittedAtUtc = DateTime.UtcNow;
         payment.Status = ManualPaymentStatus.UnderReview;
-
         await dbContext.SaveChangesAsync(cancellationToken);
-
         return Ok(ApiResponse<object>.Ok(ToSellerPaymentDto(payment), "Payment proof submitted. Awaiting admin review."));
     }
-
     private object ToSellerPaymentDto(ManualPaymentRequest payment)
     {
         return new
@@ -218,7 +203,6 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
             }
         };
     }
-
     private string GetReceiverForProvider(MobileMoneyProvider provider) => provider switch
     {
         MobileMoneyProvider.Yas => _options.YasReceiverNumber,
@@ -226,15 +210,11 @@ public sealed class SellerPaymentsController(AppDbContext dbContext, IOptions<Ma
         MobileMoneyProvider.Airtel => _options.AirtelReceiverNumber,
         _ => string.Empty
     };
-
     private static string GenerateInternalReference(string prefix)
         => $"CH-{prefix}-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
-
     private Guid GetUserId()
     {
         var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         return Guid.Parse(sub!);
     }
 }
-
-

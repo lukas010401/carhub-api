@@ -1,8 +1,9 @@
-﻿using CarHub.Api.Application.Contracts.Common;
+using CarHub.Api.Application.Contracts.Common;
 using CarHub.Api.Application.Contracts.Listings;
 using CarHub.Api.Application.Contracts.Media;
 using CarHub.Api.Domain.Entities;
 using CarHub.Api.Domain.Enums;
+using CarHub.Api.Infrastructure.Config;
 using CarHub.Api.Infrastructure.Media;
 using CarHub.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -19,9 +20,11 @@ namespace CarHub.Api.Controllers;
 public sealed class SellerListingsController(
     AppDbContext dbContext,
     IListingImageStorage imageStorage,
-    IOptions<MediaOptions> mediaOptions) : ControllerBase
+    IOptions<MediaOptions> mediaOptions,
+    IOptions<BetaModeOptions> betaOptions) : ControllerBase
 {
     private readonly MediaOptions _mediaOptions = mediaOptions.Value;
+    private readonly BetaModeOptions _betaOptions = betaOptions.Value;
 
     [HttpGet]
     public async Task<IActionResult> GetMine(
@@ -209,18 +212,21 @@ public sealed class SellerListingsController(
         var seller = await dbContext.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId);
         if (seller is null) return NotFound();
 
-        if (seller.AccountType == AccountType.Professional)
+        if (!_betaOptions.Enabled)
         {
-            if (!await HasActiveProfessionalSubscription(userId))
+            if (seller.AccountType == AccountType.Professional)
             {
-                return BadRequest("Active professional subscription required before publishing.");
+                if (!await HasActiveProfessionalSubscription(userId))
+                {
+                    return BadRequest("Active professional subscription required before publishing.");
+                }
             }
-        }
-        else
-        {
-            if (!await HasApprovedListingPayment(listing.Id, userId))
+            else
             {
-                return BadRequest("Validated payment required before publishing this listing.");
+                if (!await HasApprovedListingPayment(listing.Id, userId))
+                {
+                    return BadRequest("Validated payment required before publishing this listing.");
+                }
             }
         }
 
@@ -384,7 +390,7 @@ public sealed class SellerListingsController(
         }
 
         var hasActivePro = false;
-        if (action == "submit" && seller!.AccountType == AccountType.Professional)
+        if (!_betaOptions.Enabled && action == "submit" && seller!.AccountType == AccountType.Professional)
         {
             hasActivePro = await HasActiveProfessionalSubscription(userId);
             if (!hasActivePro)
@@ -527,13 +533,16 @@ public sealed class SellerListingsController(
     {
         if (listing.Status == ListingStatus.Published) return false;
 
-        if (seller.AccountType == AccountType.Professional)
+        if (!_betaOptions.Enabled)
         {
-            if (!await HasActiveProfessionalSubscription(seller.Id)) return false;
-        }
-        else
-        {
-            if (!await HasApprovedListingPayment(listing.Id, seller.Id)) return false;
+            if (seller.AccountType == AccountType.Professional)
+            {
+                if (!await HasActiveProfessionalSubscription(seller.Id)) return false;
+            }
+            else
+            {
+                if (!await HasApprovedListingPayment(listing.Id, seller.Id)) return false;
+            }
         }
 
         listing.Status = ListingStatus.Published;
