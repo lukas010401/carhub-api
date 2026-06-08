@@ -1,4 +1,4 @@
-﻿using CarHub.Api.Application.Contracts.Common;
+using CarHub.Api.Application.Contracts.Common;
 using CarHub.Api.Domain.Enums;
 using CarHub.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -19,13 +19,17 @@ public sealed class AdminDashboardController(AppDbContext dbContext) : AdminCont
         var published = await dbContext.Listings.AsNoTracking().CountAsync(x => x.Status == ListingStatus.Published);
         var rejected = await dbContext.Listings.AsNoTracking().CountAsync(x => x.Status == ListingStatus.Rejected);
         var sold = await dbContext.Listings.AsNoTracking().CountAsync(x => x.Status == ListingStatus.Sold);
+        var siteVisits = await dbContext.SiteVisits.AsNoTracking().CountAsync();
+        var sellerSignups = await dbContext.Users.AsNoTracking().CountAsync(x => x.Role == UserRole.Seller);
 
         return OkResponse(new
         {
             pending,
             published,
             rejected,
-            sold
+            sold,
+            siteVisits,
+            sellerSignups
         }, "Dashboard KPIs loaded.");
     }
 

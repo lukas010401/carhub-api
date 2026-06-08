@@ -1,4 +1,4 @@
-﻿using CarHub.Api.Domain.Entities;
+using CarHub.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarHub.Api.Infrastructure.Persistence;
@@ -19,6 +19,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<ProfessionalSubscription> ProfessionalSubscriptions => Set<ProfessionalSubscription>();
     public DbSet<ManualPaymentRequest> ManualPaymentRequests => Set<ManualPaymentRequest>();
     public DbSet<ManualPaymentDecision> ManualPaymentDecisions => Set<ManualPaymentDecision>();
+    public DbSet<SiteVisit> SiteVisits => Set<SiteVisit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -262,6 +263,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 .HasForeignKey(x => x.AdminUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<SiteVisit>(entity =>
+        {
+            entity.ToTable("site_visits");
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.CreatedAt);
+            entity.HasIndex(x => x.SessionKey);
+            entity.Property(x => x.SessionKey).HasMaxLength(120);
+            entity.Property(x => x.Path).HasMaxLength(300);
+        });
         modelBuilder.Entity<User>().Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         modelBuilder.Entity<AdminNotificationRead>(entity =>
         {
@@ -290,6 +300,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         modelBuilder.Entity<ProfessionalSubscription>().Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         modelBuilder.Entity<ManualPaymentRequest>().Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         modelBuilder.Entity<ManualPaymentDecision>().Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        modelBuilder.Entity<SiteVisit>().Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         base.OnModelCreating(modelBuilder);
     }
