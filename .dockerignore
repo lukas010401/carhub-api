@@ -1,0 +1,7 @@
+﻿bin
+obj
+.git
+.vs
+wwwroot/uploads
+Dockerfile
+appsettings.Development.json
